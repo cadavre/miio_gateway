@@ -30,30 +30,21 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
 
     def __init__(self, name, gw):
+        XiaomiGwDevice.__init__(self, name, gw)
         self._volume = None
-        self._muted = None
+        self._muted = False
         self._ringtone = 1
         self._state = STATE_IDLE
         self._player_tracker = None
-        XiaomiGwDevice.__init__(self, name, gw)
-        self._get_from_hub({ "method": "get_gateway_volume" }, self._init_set_volume)
-        self._get_from_hub({ "method": "get_mute" }, self._init_set_mute)
+        self._send_to_hub({ "method": "get_prop", "params": ["gateway_volume"] }, self._init_set_volume)
 
     def _init_set_volume(self, result):
-        _LOGGER.info("SETTING VOL: " + str(result))
         if result is not None:
+            _LOGGER.info("SETTING VOL: " + str(result))
             self._volume = int(result) / 100
-
-    def _init_set_mute(self, result):
-        _LOGGER.info("SETTING MUTE: " + str(result))
-        if result is not None:
-            self._muted = result
 
     def set_volume_level(self, volume):
         int_volume = int(volume * 100)
-        self._send_to_hub({ "method": "set_alarming_volume", "params": [int_volume] })
-        self._send_to_hub({ "method": "set_doorbell_volume", "params": [int_volume] })
-        self._send_to_hub({ "method": "set_sound_playing", "params": ["off"] })
         self._send_to_hub({ "method": "set_gateway_volume", "params": [int_volume] })
         self._volume = volume
         self.schedule_update_ha_state()
@@ -65,11 +56,14 @@ class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
 
     def play_media(self, media_type, media_id, **kwargs):
         if media_type == MEDIA_TYPE_MUSIC:
+            print(kwargs)
             self._ringtone = media_id
             self.media_play()
 
-    def media_play(self):
+    def media_play(self, new_volume=None):
         int_volume = int(self._volume * 100)
+        if new_volume is not None:
+            int_volume = int(new_volume)
         self._send_to_hub({ "method": "play_music_new", "params": [str(self._ringtone), int_volume] })
         self._state = STATE_PLAYING
         self._player_tracker = async_track_point_in_utc_time(
@@ -122,11 +116,9 @@ class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
         self._state = STATE_IDLE
         self.async_schedule_update_ha_state()
 
-    def parse_incoming_data(self, params):
+    def parse_incoming_data(self, params, event, model, sid):
         if params is None:
             return False
-
-        # TODO listen for mute changes
 
         gateway_volume = params.get("gateway_volume")
         if gateway_volume is not None:

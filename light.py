@@ -20,10 +20,11 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class XiaomiGatewayLight(XiaomiGwDevice, Light):
 
     def __init__(self, name, gw):
+        XiaomiGwDevice.__init__(self, name, gw)
         self._hs = (0, 0)
         self._brightness = 100
-        # TODO init with light status
-        XiaomiGwDevice.__init__(self, name, gw)
+        self._state = False
+        self._send_to_hub({ "method": "toggle_light", "params": ["off"] })
 
     @property
     def is_on(self):
@@ -59,9 +60,10 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
         self._state = False
         self.schedule_update_ha_state()
 
-    def parse_incoming_data(self, params):
+    def parse_incoming_data(self, params, event, model, sid):
         if params is None:
             return False
+
         light = params.get("light")
         if light is not None:
             if light == 'on':

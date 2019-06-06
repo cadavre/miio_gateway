@@ -20,9 +20,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class XiaomiGatewaySensor(XiaomiGwDevice):
 
     def __init__(self, name, type, gw):
+        XiaomiGwDevice.__init__(self, name, gw)
         self._sensor_type = type
         self._state = None
-        XiaomiGwDevice.__init__(self, name, gw)
 
     @property
     def icon(self):
@@ -49,7 +49,7 @@ class XiaomiGatewaySensor(XiaomiGwDevice):
     def state(self):
         return self._state
 
-    def parse_incoming_data(self, params):
+    def parse_incoming_data(self, params, event, model, sid):
         if params is None:
             return False
 
