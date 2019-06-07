@@ -64,7 +64,7 @@ miio_gateway:
 
 ## Zibgee devices
 
-#### Pairing
+### Pairing
 
 You can pair new devices without entering Mi Home app by using HA service, just call:
 
@@ -74,7 +74,7 @@ miio_gateway.join_zigbee
 
 service to enter pairing mode.
 
-#### Adding sensor to HA
+### Adding sensor to HA
 
 Once you've paired new device you'll be able to see "unregistered" sensor in your HA logs.
 
@@ -85,7 +85,7 @@ Received event from unregistered sensor: lumi.sensor_motion.v2 lumi.abcd - event
 
 Use SID and model version to define it in `sensors:` section of `configuration.yaml`.
 
-#### Using Zigbee button
+### Using Zigbee button
 
 Zigbee buttons are triggering an events for their actions.
 
