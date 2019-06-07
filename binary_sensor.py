@@ -13,7 +13,6 @@ EVENT_KEEPALIVE = "event.keepalive"
 ATTR_ALIVE = "Heartbeat"
 ATTR_VOLTAGE = "Voltage"
 ATTR_LQI = "Link quality"
-ATTR_POWER_TX = "TX power"
 ATTR_MODEL = "Model"
 
 # Door Window Opening Sensor
@@ -86,7 +85,6 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
         self._alive = None
         self._voltage = None
         self._lqi = None
-        self._power_tx = None
         self._model = None
 
     @property
@@ -103,16 +101,11 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
 
     @property
     def device_state_attributes(self):
-        attrs = { ATTR_VOLTAGE: self._voltage, ATTR_LQI: self._lqi, ATTR_POWER_TX: self._power_tx, ATTR_MODEL: self._model, ATTR_ALIVE: self._alive }
+        attrs = { ATTR_VOLTAGE: self._voltage, ATTR_LQI: self._lqi, ATTR_MODEL: self._model, ATTR_ALIVE: self._alive }
         attrs.update(super().device_state_attributes)
         return attrs
 
     def preparse_data(self, params, event, model, sid):
-        # Debug
-        if event == EVENT_LOG:
-            print("_otc.log")
-            print(params)
-
         if event is None or sid is None:
             return False
 
@@ -127,14 +120,11 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
             return True
 
         if event == EVENT_LOG:
-            _LOGGER.info("Received log")
-            print(params)
             zigbeeData = params.get("subdev_zigbee")
             if zigbeeData is not None:
                 self._voltage = zigbeeData.get("voltage")
                 self._lqi = zigbeeData.get("lqi")
-                self._power_tx = zigbeeData.get("power_tx")
-                _LOGGER.info("Vol:" + str(self._voltage) + " lqi:" + str(self._lqi) + " tx:" + str(self._power_tx))
+                _LOGGER.info("Vol:" + str(self._voltage) + " lqi:" + str(self._lqi))
                 return True
             return False
 
