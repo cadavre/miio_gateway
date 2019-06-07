@@ -84,3 +84,31 @@ Received event from unregistered sensor: lumi.sensor_motion.v2 lumi.abcd - event
 ```
 
 Use SID and model version to define it in `sensors:` section of `configuration.yaml`.
+
+#### Using Zigbee button
+
+Zigbee buttons are triggering an events for their actions.
+
+Event type: `miio_gateway.button_action`
+
+Available event data: `click_type`
+
+Click type available payloads:
+* `single_click`
+* `double_click`
+* `long_press`
+* `long_release`
+
+**Automation example:**
+
+```yaml
+- alias: 'Toggle the light'
+  trigger:
+    platform: event
+    event_type: miio_gateway.button_action
+    event_data:
+      click_type: 'single_click'
+  action:
+    - service: light.toggle
+      entity_id: light.my_light
+```
