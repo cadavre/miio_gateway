@@ -185,12 +185,13 @@ class XiaomiGw:
                 sid = None
                 model = None
                 event = None
-                if method is not None and method.find("event.") != -1:
-                    sid = data.get("sid")
-                    model = data.get("model")
-                    event = method
-                    if sid is not None and model is not None:
-                        self._event_received(sid, model, event)
+                if method is not None:
+                    if method.find("event.") != -1 or method.startswith("_otc"):
+                        sid = data.get("sid")
+                        model = data.get("model")
+                        event = method
+                        if sid is not None and model is not None:
+                            self._event_received(sid, model, event)
 
                 for func in self.callbacks:
                     func(params, event, model, sid)

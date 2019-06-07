@@ -1,6 +1,7 @@
 import logging
 
 from homeassistant.components.binary_sensor import BinarySensorDevice
+from homeassistant.util.dt import utcnow
 
 from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, XiaomiGwDevice
 
@@ -8,6 +9,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # Generic Sensor
 EVENT_LOG = "_otc.log"
+EVENT_KEEPALIVE = "event.keepalive"
+ATTR_ALIVE = "Heartbeat"
 ATTR_VOLTAGE = "Voltage"
 ATTR_LQI = "Link quality"
 ATTR_POWER_TX = "TX power"
@@ -80,6 +83,7 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
         self._sid = sid
         self._unique_id = "{}_{}".format(self._sid, self._device_class)
         self._name = name
+        self._alive = None
         self._voltage = None
         self._lqi = None
         self._power_tx = None
@@ -99,16 +103,16 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
 
     @property
     def device_state_attributes(self):
-        attrs = { ATTR_VOLTAGE: self._voltage, ATTR_LQI: self._lqi, ATTR_POWER_TX: self._power_tx, ATTR_MODEL: self._model }
+        attrs = { ATTR_VOLTAGE: self._voltage, ATTR_LQI: self._lqi, ATTR_POWER_TX: self._power_tx, ATTR_MODEL: self._model, ATTR_ALIVE: self._alive }
         attrs.update(super().device_state_attributes)
         return attrs
 
-class XiaomiGwDoorSensor(XiaomiGwBinarySensor):
+    def preparse_data(self, params, event, model, sid):
+        # Debug
+        if event == EVENT_LOG:
+            print("_otc.log")
+            print(params)
 
-    def __init__(self, sid, gw):
-        XiaomiGwBinarySensor.__init__(self, "Opening Sensor", sid, gw, DEVICE_CLASS_OPENING)
-
-    def parse_incoming_data(self, params, event, model, sid):
         if event is None or sid is None:
             return False
 
@@ -117,6 +121,10 @@ class XiaomiGwDoorSensor(XiaomiGwBinarySensor):
 
         if model is not None:
             self._model = model
+
+        if event == EVENT_KEEPALIVE:
+            self._alive = utcnow()
+            return True
 
         if event == EVENT_LOG:
             _LOGGER.info("Received log")
@@ -129,6 +137,18 @@ class XiaomiGwDoorSensor(XiaomiGwBinarySensor):
                 _LOGGER.info("Vol:" + str(self._voltage) + " lqi:" + str(self._lqi) + " tx:" + str(self._power_tx))
                 return True
             return False
+
+        return None
+
+class XiaomiGwDoorSensor(XiaomiGwBinarySensor):
+
+    def __init__(self, sid, gw):
+        XiaomiGwBinarySensor.__init__(self, "Opening Sensor", sid, gw, DEVICE_CLASS_OPENING)
+
+    def parse_incoming_data(self, params, event, model, sid):
+        preparse = self.preparse_data(params, event, model, sid)
+        if preparse is not None:
+            return preparse
 
         if event == EVENT_CLOSE:
             self._state = False
@@ -145,26 +165,9 @@ class XiaomiGwMotionSensor(XiaomiGwBinarySensor):
         XiaomiGwBinarySensor.__init__(self, "Motion Sensor", sid, gw, DEVICE_CLASS_MOTION)
 
     def parse_incoming_data(self, params, event, model, sid):
-        if event is None or sid is None:
-            return False
-
-        if self._sid != sid:
-            return False
-
-        if model is not None:
-            self._model = model
-
-        if event == EVENT_LOG:
-            _LOGGER.info("Received log")
-            print(params)
-            zigbeeData = params.get("subdev_zigbee")
-            if zigbeeData is not None:
-                self._voltage = zigbeeData.get("voltage")
-                self._lqi = zigbeeData.get("lqi")
-                self._power_tx = zigbeeData.get("power_tx")
-                _LOGGER.info("Vol:" + str(self._voltage) + " lqi:" + str(self._lqi) + " tx:" + str(self._power_tx))
-                return True
-            return False
+        preparse = self.preparse_data(params, event, model, sid)
+        if preparse is not None:
+            return preparse
 
         if event == EVENT_MOTION:
             self._state = True
@@ -187,26 +190,9 @@ class XiaomiGwButton(XiaomiGwBinarySensor):
         return attrs
 
     def parse_incoming_data(self, params, event, model, sid):
-        if event is None or sid is None:
-            return False
-
-        if self._sid != sid:
-            return False
-
-        if model is not None:
-            self._model = model
-
-        if event == EVENT_LOG:
-            _LOGGER.info("Received log")
-            print(params)
-            zigbeeData = params.get("subdev_zigbee")
-            if zigbeeData is not None:
-                self._voltage = zigbeeData.get("voltage")
-                self._lqi = zigbeeData.get("lqi")
-                self._power_tx = zigbeeData.get("power_tx")
-                _LOGGER.info("Vol:" + str(self._voltage) + " lqi:" + str(self._lqi) + " tx:" + str(self._power_tx))
-                return True
-            return False
+        preparse = self.preparse_data(params, event, model, sid)
+        if preparse is not None:
+            return preparse
 
         if event == EVENT_SINGLE_CLICK:
             click_type = "single_click"
