@@ -152,49 +152,54 @@ class XiaomiGw:
                 data = self._socket.recvfrom(1480)[0]
                 _LOGGER.debug("Received data:")
                 _LOGGER.debug(data)
-                data = self._miio_msg_decode(data)
 
+                # Available = true
                 self._set_available()
 
-                # Skip all `internal.` methods.
-                method = data.get("method")
-                if method is not None and method.startswith("internal."):
-                    continue
+                # Get all messages from response data
+                resps = self._miio_msg_decode(data)
 
-                # Call result callback if registered for given miio_id.
-                miio_id = data.get("id")
-                if miio_id is not None and miio_id in self._result_callbacks:
-                    result = data.get("result")
-                    if isinstance(result, list):
-                        result = result[0]
-                    self._result_callbacks[miio_id](result)
+                # For all messages in response
+                for data in resps:
+                    # Skip all `internal.` methods.
+                    method = data.get("method")
+                    if method is not None and method.startswith("internal."):
+                        continue
 
-                # If params obj is in arr – unwrap it.
-                params = data.get("params")
-                if isinstance(params, list):
-                    if len(params) == 0:
+                    # Call result callback if registered for given miio_id.
+                    miio_id = data.get("id")
+                    if miio_id is not None and miio_id in self._result_callbacks:
+                        result = data.get("result")
+                        if isinstance(result, list):
+                            result = result[0]
+                        self._result_callbacks[miio_id](result)
+
+                    # If params obj is in arr – unwrap it.
+                    params = data.get("params")
+                    if isinstance(params, list):
+                        if len(params) == 0:
+                            params = None
+                        else:
+                            params = params[0]
+
+                    # We're not interested in int params right now.
+                    if isinstance(params, int):
                         params = None
-                    else:
-                        params = params[0]
 
-                # We're not interested in int params right now.
-                if isinstance(params, int):
-                    params = None
+                    # Received binary_sensor event.
+                    sid = None
+                    model = None
+                    event = None
+                    if method is not None:
+                        if method.find("event.") != -1 or method.startswith("_otc"):
+                            sid = data.get("sid")
+                            model = data.get("model")
+                            event = method
+                            if sid is not None and model is not None:
+                                self._event_received(sid, model, event)
 
-                # Received binary_sensor event.
-                sid = None
-                model = None
-                event = None
-                if method is not None:
-                    if method.find("event.") != -1 or method.startswith("_otc"):
-                        sid = data.get("sid")
-                        model = data.get("model")
-                        event = method
-                        if sid is not None and model is not None:
-                            self._event_received(sid, model, event)
-
-                for func in self.callbacks:
-                    func(params, event, model, sid)
+                    for func in self.callbacks:
+                        func(params, event, model, sid)
             except socket.timeout:
                 pass
 
@@ -223,13 +228,15 @@ class XiaomiGw:
         """Decode data received from gateway."""
         if data[-1] == 0:
             data = data[:-1]
-        res = {}
+        resps = []
         try:
-            fixed_str = data.decode().replace('}{', '},{')
-            res = json.loads(fixed_str)
+            separated_str = data.decode().replace('}{', '}xox{')
+            resps_str = separated_str.split('xox')
+            for res_str in resps_str:
+                resps.append(json.loads(res_str))
         except:
-            print("Bad JSON received")
-        return res
+            print("Bad JSON received: " + str(data))
+        return resps
 
     def _async_track_availability(self):
         """Set tracker to ping and check availability."""
