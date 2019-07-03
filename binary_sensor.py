@@ -2,9 +2,8 @@ import logging
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDevice, DEVICE_CLASSES)
-from homeassistant.util.dt import utcnow
 
-from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF_SENSOR_NAME, XiaomiGwDevice
+from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF_SENSOR_NAME, EVENT_VALUES, XiaomiGwDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,6 +25,10 @@ EVENT_NO_LEAK = "event.no_leak"
 # Vibration Sensor
 EVENT_VIBRATION = "event.vibrate"
 EVENT_BED_ACTIVITY = "event.bed_activity"
+EVENT_FREEFALL = "event.free_fall"
+EVENT_TILT = "event.tilt"
+EVENT_TILT_ANGLE = "event.final_tilt_angle"
+EVENT_COORDINATION = "event.coordination"
 
 # Button Sensor
 DEVICE_CLASS_BUTTON = "button"
@@ -33,6 +36,8 @@ EVENT_SINGLE_CLICK = "event.click"
 EVENT_DOUBLE_CLICK = "event.double_click"
 EVENT_LONG_PRESS = "event.long_click_press"
 EVENT_LONG_RELEASE = "event.long_click_release"
+
+IGNORED_EVENTS = [EVENT_VALUES, EVENT_TILT_ANGLE, EVENT_COORDINATION]
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     _LOGGER.info("Setting up binary sensors")
@@ -92,12 +97,17 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
 
     @property
     def device_state_attributes(self):
-        attrs = super().device_state_attributes()
+        attrs = super().device_state_attributes
         if self._last_action is not None:
             attrs.update({ATTR_LAST_ACTION: self._last_action})
         return attrs
 
     def parse_incoming_data(self, model, sid, event, params):
+
+        # Ignore params event for this platform
+        if event in IGNORED_EVENTS:
+            return False
+
         if event in [EVENT_OPEN, EVENT_NO_CLOSE, EVENT_MOTION, EVENT_LEAK]:
             self._state = True
         elif event in [EVENT_CLOSE, EVENT_NO_MOTION, EVENT_NO_LEAK]:

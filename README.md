@@ -128,8 +128,10 @@ Click type available payloads:
 ### Using vibration sensor
 
 Just like `button` – vibration sensor sends one of two events:
-* `vibration`
-* `bed_activity`
+* `vibration` on vibration
+* `free_fall` on free-fall
+* `tilt` on tilt by an angle
+* `bed_activity` on... bed activity? :D
 
 You can use them just like with buttons. Event type is still `event_type: miio_gateway.action`.
 

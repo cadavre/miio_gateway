@@ -61,6 +61,7 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
         self.schedule_update_ha_state()
 
     def parse_incoming_data(self, model, sid, event, params):
+
         light = params.get("light")
         if light is not None:
             if light == 'on':

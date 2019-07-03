@@ -117,6 +117,7 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
         return self._state
 
     def parse_incoming_data(self, model, sid, event, params):
+
         arming = params.get("arming")
         if arming is not None:
             if arming == "on":

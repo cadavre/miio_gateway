@@ -117,6 +117,7 @@ class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
         self.async_schedule_update_ha_state()
 
     def parse_incoming_data(self, model, sid, event, params):
+
         gateway_volume = params.get("gateway_volume")
         if gateway_volume is not None:
             float_volume = gateway_volume / 100
