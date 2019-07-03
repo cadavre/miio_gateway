@@ -8,12 +8,6 @@ from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF
 
 _LOGGER = logging.getLogger(__name__)
 
-#SENSOR_TYPES = {
-#    DEVICE_CLASS_ILLUMINANCE: {"unit_of_measurement": "lm", "icon": "mdi:white-balance-sunny"},
-#    DEVICE_CLASS_TEMPERATURE: {"unit_of_measurement": TEMP_CELSIUS, "icon": "mdi:thermometer"},
-#    DEVICE_CLASS_HUMIDITY: {"unit_of_measurement": "%", "icon": "mdi:water-percent"},
-#}
-
 # Door Window Opening Sensor
 EVENT_OPEN = "event.open"
 EVENT_CLOSE = "event.close"
