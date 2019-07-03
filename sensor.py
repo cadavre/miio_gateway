@@ -1,7 +1,7 @@
 import logging
 
 from homeassistant.const import (
-    TEMP_CELSIUS, DEVICE_CLASS_ILLUMINANCE, DEVICE_CLASS_TEMPERATURE, DEVICE_CLASS_HUMIDITY)
+    TEMP_CELSIUS, DEVICE_CLASS_ILLUMINANCE, DEVICE_CLASS_TEMPERATURE, DEVICE_CLASS_HUMIDITY, DEVICE_CLASS_PRESSURE)
 from homeassistant.components.sensor import (
     DEVICE_CLASSES)
 
@@ -13,6 +13,7 @@ SENSOR_TYPES = {
     DEVICE_CLASS_ILLUMINANCE: {"unit_of_measurement": "lm", "icon": "mdi:white-balance-sunny"},
     DEVICE_CLASS_TEMPERATURE: {"unit_of_measurement": TEMP_CELSIUS, "icon": "mdi:thermometer"},
     DEVICE_CLASS_HUMIDITY: {"unit_of_measurement": "%", "icon": "mdi:water-percent"},
+    DEVICE_CLASS_PRESSURE: {"unit_of_measurement": "hPa", "icon": "mdi:weather-windy"},
 }
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
@@ -44,8 +45,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
         if device_class in all_device_classes:
             entities.append(XiaomiGwSensor(gateway, device_class, sid, name))
-        else:
-            _LOGGER.info("Unrecognized device class " + str(device_class) + " in sensor")
 
     if not entities:
         _LOGGER.info("No sensors configured")
@@ -101,6 +100,12 @@ class XiaomiGwSensor(XiaomiGwDevice):
             humidity = params.get("humidity")
             if humidity is not None:
                 self._state = round(humidity/100, 1)
+                return True
+
+        elif self._device_class == DEVICE_CLASS_PRESSURE:
+            pressure = params.get("pressure")
+            if pressure is not None:
+                self._state = round(pressure/100, 1)
                 return True
 
         return False

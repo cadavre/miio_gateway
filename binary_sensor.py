@@ -8,6 +8,8 @@ from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF
 
 _LOGGER = logging.getLogger(__name__)
 
+ATTR_LAST_ACTION = "last_action"
+
 # Door Window Opening Sensor
 EVENT_OPEN = "event.open"
 EVENT_CLOSE = "event.close"
@@ -16,6 +18,10 @@ EVENT_NO_CLOSE = "event.no_close"
 # Motion Sensor
 EVENT_MOTION = "event.motion"
 EVENT_NO_MOTION = "event.no_motion"
+
+# Leak Sensor
+EVENT_LEAK = "event.leak"
+EVENT_NO_LEAK = "event.no_leak"
 
 # Vibration Sensor
 EVENT_VIBRATION = "event.vibrate"
@@ -55,8 +61,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
         if device_class in all_device_classes:
             entities.append(XiaomiGwBinarySensor(gateway, device_class, sid, name))
-        else:
-            _LOGGER.info("Unrecognized device class " + str(device_class) + " in binary_sensor")
 
     if not entities:
         _LOGGER.info("No binary_sensors configured")
@@ -69,6 +73,8 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
 
     def __init__(self, gw, device_class, sid, name):
         XiaomiGwDevice.__init__(self, gw, "binary_sensor", device_class, sid, name)
+
+        self._last_action = None
 
         # Custom Button device class
         if device_class == DEVICE_CLASS_BUTTON:
@@ -84,10 +90,17 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
     def device_class(self):
         return self._device_class
 
+    @property
+    def device_state_attributes(self):
+        attrs = super().device_state_attributes()
+        if self._last_action is not None:
+            attrs.update({ATTR_LAST_ACTION: self._last_action})
+        return attrs
+
     def parse_incoming_data(self, model, sid, event, params):
-        if event in [EVENT_OPEN, EVENT_NO_CLOSE, EVENT_MOTION]:
+        if event in [EVENT_OPEN, EVENT_NO_CLOSE, EVENT_MOTION, EVENT_LEAK]:
             self._state = True
-        elif event in [EVENT_CLOSE, EVENT_NO_MOTION]:
+        elif event in [EVENT_CLOSE, EVENT_NO_MOTION, EVENT_NO_LEAK]:
             self._state = False
         else:
             event_type = event.split(".")[1]

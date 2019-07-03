@@ -37,7 +37,6 @@ ATTR_ALIVE = "heartbeat"
 ATTR_VOLTAGE = "voltage"
 ATTR_LQI = "link_quality"
 ATTR_MODEL = "model"
-ATTR_LAST_ACTION = "last_action"
 
 EVENT_METADATA = "internal.metadata"
 EVENT_VALUES = "internal.values"

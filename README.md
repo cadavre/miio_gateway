@@ -28,17 +28,27 @@ control the gateway from Mi Home app!
 
 ## What is supported
 
-* Built-in LED as `light` component.
+* Built-in LED as `light.miio_gateway` component.
   > With brightness and colors.
-* Built-in speaker and sounds library as `media_player` component.
+* Built-in speaker and sounds library as `media_player.miio_gateway` component.
   > With play, stop, mute, set_volume and play_media with ringtone ID as media ID.
-* Built-in luminescence sensor (yes, there's one) as `sensor` component.
+* Built-in luminescence sensor (yes, there's one) as `sensor.miio_gateway_illuminance` component.
   > Sensor shows readings in lumens.
-* Built-in alarm functionality as `alarm_control_panel` component.
-  > Arm, disarm; night/home/away modes supported with alarm volumes: 5/15/70.
+* Built-in alarm functionality as `alarm_control_panel.miio_gateway` component.
+  > Arm, disarm; night/home/away modes supported via alarm volumes: 5/15/70.
 
 * Child sensors as `binary_sensor`.
-  > Currently supported are: motion sensors, door/window sensors and button.
+  > Currently supported are:
+  > * motion sensors,
+  > * door/window sensors,
+  > * leak sensors,
+  > * buttons.
+
+* Child sensors as `sensor`.
+  > Currently supported are:
+  > * temperature sensors,
+  > * humidity sensors,
+  > * pressure sensors.
 
 ## Installation of HA component
 
@@ -55,11 +65,12 @@ miio_gateway:
   port: 54321          # port running miio_client, defaults to 54321
   sensors:             # sensors that will be available in HA (optional)
     - sid: lumi.abcd
-      class: motion    # motion sensor type
+      class: motion                           # motion sensor
+      friendly_name: My garage motion sensor  # display name (optional)
     - sid: lumi.0123
-      class: opening   # door/window sensor
+      class: door                             # door sensor
     - sid: lumi.ab01
-      class: button    # button
+      class: button                           # button
 ```
 
 ## Zibgee devices
@@ -72,7 +83,7 @@ You can pair new devices without entering Mi Home app by using HA service, just 
 miio_gateway.join_zigbee
 ```
 
-service to enter pairing mode.
+service to enter pairing mode. No need to kep original `miio_client` up for 10mins after gateway reboot!
 
 ### Adding sensor to HA
 
@@ -83,7 +94,7 @@ Received event from unregistered sensor: lumi.sensor_motion.v2 lumi.abcd - event
                                          ^ model               ^ sid       ^ event that was sent
 ```
 
-Use SID and model version to define it in `sensors:` section of `configuration.yaml`.
+Use SID to define it in `sensors:` section of `configuration.yaml`.
 
 ### Using Zigbee button
 
@@ -94,10 +105,10 @@ Event type: `miio_gateway.button_action`
 Available event data: `click_type`
 
 Click type available payloads:
-* `single_click`
+* `click`
 * `double_click`
-* `long_press`
-* `long_release`
+* `long_click_press`
+* `long_click_release`
 
 **Automation example:**
 
@@ -105,10 +116,62 @@ Click type available payloads:
 - alias: 'Toggle the light'
   trigger:
     platform: event
-    event_type: miio_gateway.button_action
+    event_type: miio_gateway.action
     event_data:
-      click_type: 'single_click'
+      event_type: 'single_click'
+      entity_id: 'binary_sensor.lumi_ab01_button'
   action:
     - service: light.toggle
       entity_id: light.my_light
 ```
+
+### Using vibration sensor
+
+Just like `button` – vibration sensor sends one of two events:
+* `vibration`
+* `bed_activity`
+
+You can use them just like with buttons. Event type is still `event_type: miio_gateway.action`.
+
+## Changelog
+
+### v1.1
+
+* Changed entity_id and name generation methods.
+* Added support for temp/humid/pressure sensors.
+* Added support for vibration sensor.
+* Added `friendly_name` to sensor definition in config.yml.
+* Sensor `class` can be now anything from binary_sensor (door, garage_door, window, motion, moving, opening, smoke, vibration and more).
+  Keep in mind that not all Miio events are supported yet! Listed above are supported.
+* Sensor `class` can be now anything from sensor (humidity, illuminance, temperature, pressure and more).
+  Keep in mind that not all Miio events are supported yet! Listed above are supported.
+
+#### Breaking changesButtons
+
+##### General
+
+* Due to changed method of entity_id generation, after update, all entities will have new entity_ids.
+  You can remove old entities before update via `Settings -> Entity registry` with `miio_gateway` tag.
+  Then you can update this component and restart HA.
+  After restart new entities will be visible – you'll be able to change its entity_id via "Entity registry" too.
+
+##### Button events
+
+* `miio_gateway.button_action` event changed to `miio_gateway.action`
+* `click_type` event param changed to `event_type`
+* `single_click` changed to `click`
+* `long_press` changed to `long_click_press`
+* `long_release` changed to `long_click_release`
+
+## Not supported yet
+
+Not supported but likely to work with:
+
+* Smoke and gas sensors.
+* Occupancy detectors.
+* Plug switches.
+* Locks.
+* Smart Cubes.
+* Remotes(?).
+* Relays(?).
+* Curtains(?).
