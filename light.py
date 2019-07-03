@@ -20,7 +20,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class XiaomiGatewayLight(XiaomiGwDevice, Light):
 
     def __init__(self, gw):
-        XiaomiGwDevice.__init__(self, gw, "light", None, "internal.gateway", "Gateway LED")
+        XiaomiGwDevice.__init__(self, gw, "light", None, "miio.gateway", "Gateway LED")
         self._hs = (0, 0)
         self._brightness = 100
         self._state = False

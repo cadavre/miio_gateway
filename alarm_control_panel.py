@@ -20,7 +20,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
 
     def __init__(self, gw):
-        XiaomiGwDevice.__init__(self, gw, "alarm_control_panel", None, "internal.gateway", "Gateway Alarm")
+        XiaomiGwDevice.__init__(self, gw, "alarm_control_panel", None, "miio.gateway", "Gateway Alarm")
 
         # Default to ARMED_AWAY if no volume data was set
         self._state_by_volume = STATE_ALARM_ARMED_AWAY

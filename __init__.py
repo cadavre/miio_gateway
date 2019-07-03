@@ -111,7 +111,7 @@ class XiaomiGw:
         self._ping_loss = 0
 
         self.known_sids = []
-        self.known_sids.append("internal.gateway")
+        self.known_sids.append("miio.gateway")
 
         import hashlib, base64
         self._unique_id = base64.urlsafe_b64encode(hashlib.sha1((self._host + ":" + str(self._port)).encode("utf-8")).digest())[:10].decode("utf-8")
@@ -211,7 +211,7 @@ class XiaomiGw:
                 model = res.get("model")
 
                 if "sid" not in res:
-                    res["sid"] = "internal.gateway"
+                    res["sid"] = "miio.gateway"
                 sid = res.get("sid")
 
                 params = res.get("params")

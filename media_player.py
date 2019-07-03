@@ -30,7 +30,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
 
     def __init__(self, gw):
-        XiaomiGwDevice.__init__(self, gw, "media_player", None, "internal.gateway", "Gateway Player")
+        XiaomiGwDevice.__init__(self, gw, "media_player", None, "miio.gateway", "Gateway Player")
         self._volume = None
         self._muted = False
         self._ringtone = 1
