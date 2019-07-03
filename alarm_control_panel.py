@@ -14,14 +14,14 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     _LOGGER.info("Setting up alarm")
     devices = []
     gateway = hass.data[DOMAIN]
-    devices.append(XiaomiGatewayAlarm("gw_alarm", gateway))
+    devices.append(XiaomiGatewayAlarm(gateway))
     add_entities(devices)
 
 class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
 
-    def __init__(self, name, gw):
-        XiaomiGwDevice.__init__(self, name, gw)
-        self._state = None
+    def __init__(self, gw):
+        XiaomiGwDevice.__init__(self, gw, "alarm_control_panel", None, "internal.gateway", "Gateway Alarm")
+
         # Default to ARMED_AWAY if no volume data was set
         self._state_by_volume = STATE_ALARM_ARMED_AWAY
         self._volume = 70
@@ -34,9 +34,9 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
     def _init_set_arming(self, result):
         if result is not None:
             _LOGGER.info("SETTING ARMED: " + str(result))
-            if result == 'on':
+            if result == "on":
                 self._state = self._state_by_volume
-            elif result == 'off':
+            elif result == "off":
                 self._state = STATE_ALARM_DISARMED
 
     def _init_set_volume(self, result):
@@ -116,15 +116,12 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
     def state(self):
         return self._state
 
-    def parse_incoming_data(self, params, event, model, sid):
-        if params is None:
-            return False
-
+    def parse_incoming_data(self, model, sid, event, params):
         arming = params.get("arming")
         if arming is not None:
-            if arming == 'on':
+            if arming == "on":
                 self._state = self._get_state_by_volume(self._volume)
-            elif arming == 'off':
+            elif arming == "off":
                 self._state = STATE_ALARM_DISARMED
             return True
 

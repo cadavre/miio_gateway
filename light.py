@@ -3,7 +3,7 @@ import binascii
 import struct
 
 from homeassistant.components.light import (
-    ATTR_BRIGHTNESS, ATTR_HS_COLOR, SUPPORT_BRIGHTNESS, SUPPORT_COLOR, Light)
+    Light, ATTR_BRIGHTNESS, ATTR_HS_COLOR, SUPPORT_BRIGHTNESS, SUPPORT_COLOR)
 import homeassistant.util.color as color_util
 
 from . import DOMAIN, XiaomiGwDevice
@@ -14,13 +14,13 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     _LOGGER.info("Setting up light")
     devices = []
     gateway = hass.data[DOMAIN]
-    devices.append(XiaomiGatewayLight("gw_light", gateway))
+    devices.append(XiaomiGatewayLight(gateway))
     add_entities(devices)
 
 class XiaomiGatewayLight(XiaomiGwDevice, Light):
 
-    def __init__(self, name, gw):
-        XiaomiGwDevice.__init__(self, name, gw)
+    def __init__(self, gw):
+        XiaomiGwDevice.__init__(self, gw, "light", None, "internal.gateway", "Gateway LED")
         self._hs = (0, 0)
         self._brightness = 100
         self._state = False
@@ -60,10 +60,7 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
         self._state = False
         self.schedule_update_ha_state()
 
-    def parse_incoming_data(self, params, event, model, sid):
-        if params is None:
-            return False
-
+    def parse_incoming_data(self, model, sid, event, params):
         light = params.get("light")
         if light is not None:
             if light == 'on':
