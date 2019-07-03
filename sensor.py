@@ -5,7 +5,7 @@ from homeassistant.const import (
 from homeassistant.components.sensor import (
     DEVICE_CLASSES)
 
-from . import DOMAIN, XiaomiGwDevice
+from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF_SENSOR_NAME, XiaomiGwDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if device_class in all_device_classes:
             entities.append(XiaomiGwSensor(gateway, device_class, sid, name))
         else:
-            _LOGGER.info("Unrecognized device class " + str(device_class)) + " in sensor"
+            _LOGGER.info("Unrecognized device class " + str(device_class) + " in sensor")
 
     if not entities:
         _LOGGER.info("No sensors configured")
@@ -54,7 +54,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(entities)
     return True
 
-class XiaomiGwSensor(XiaomiGwDevice, BinarySensorDevice):
+class XiaomiGwSensor(XiaomiGwDevice):
 
     def __init__(self, gw, device_class, sid, name):
         XiaomiGwDevice.__init__(self, gw, "sensor", device_class, sid, name)

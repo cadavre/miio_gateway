@@ -33,6 +33,16 @@ CONF_SENSOR_SID = "sid"
 CONF_SENSOR_CLASS = "class"
 CONF_SENSOR_NAME = "friendly_name"
 
+ATTR_ALIVE = "heartbeat"
+ATTR_VOLTAGE = "voltage"
+ATTR_LQI = "link_quality"
+ATTR_MODEL = "model"
+ATTR_LAST_ACTION = "last_action"
+
+EVENT_METADATA = "internal.metadata"
+EVENT_VALUES = "internal.values"
+EVENT_KEEPALIVE = "event.keepalive"
+
 SENSORS_CONFIG_SCHEMA = vol.Schema({
     vol.Optional(CONF_SENSOR_SID): cv.string,
     vol.Optional(CONF_SENSOR_CLASS): cv.string,
@@ -232,10 +242,10 @@ class XiaomiGw:
                     self._event_received(model, sid, event)
                 elif method == "_otc.log":
                     """Received metadata."""
-                    event = "internal.metadata"
+                    event = EVENT_METADATA
                 elif method == "props":
                     """Received values."""
-                    event = "internal.values"
+                    event = EVENT_VALUES
                 else:
                     """Unknown method."""
                     print("Received unknown method: " + str(data))
@@ -372,7 +382,7 @@ class XiaomiGwDevice(Entity):
     @property
     def device_state_attributes(self):
         attrs = { ATTR_VOLTAGE: self._voltage, ATTR_LQI: self._lqi, ATTR_MODEL: self._model, ATTR_ALIVE: self._alive }
-        return attr
+        return attrs
 
     def _add_push_data_job(self, *args):
         self.hass.add_job(self._push_data, *args)

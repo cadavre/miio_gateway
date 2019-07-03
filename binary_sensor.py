@@ -8,15 +8,11 @@ from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF
 
 _LOGGER = logging.getLogger(__name__)
 
-ATTR_ALIVE = "heartbeat"
-ATTR_VOLTAGE = "voltage"
-ATTR_LQI = "link_quality"
-ATTR_MODEL = "model"
-ATTR_LAST_ACTION = "last_action"
-
-# Generic Sensor
-EVENT_METADATA = "internal.metadata"
-EVENT_KEEPALIVE = "event.keepalive"
+#SENSOR_TYPES = {
+#    DEVICE_CLASS_ILLUMINANCE: {"unit_of_measurement": "lm", "icon": "mdi:white-balance-sunny"},
+#    DEVICE_CLASS_TEMPERATURE: {"unit_of_measurement": TEMP_CELSIUS, "icon": "mdi:thermometer"},
+#    DEVICE_CLASS_HUMIDITY: {"unit_of_measurement": "%", "icon": "mdi:water-percent"},
+#}
 
 # Door Window Opening Sensor
 EVENT_OPEN = "event.open"
@@ -66,7 +62,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if device_class in all_device_classes:
             entities.append(XiaomiGwBinarySensor(gateway, device_class, sid, name))
         else:
-            _LOGGER.info("Unrecognized device class " + str(device_class)) + " in binary_sensor"
+            _LOGGER.info("Unrecognized device class " + str(device_class) + " in binary_sensor")
 
     if not entities:
         _LOGGER.info("No binary_sensors configured")
