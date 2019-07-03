@@ -401,8 +401,7 @@ class XiaomiGwDevice(Entity):
             # Update HA state
             if init_check == True:
                 self.async_schedule_update_ha_state()
-            else:
-                return
+            return
 
         # If parsed some data
         has_data = self.parse_incoming_data(model, sid, event, params)
