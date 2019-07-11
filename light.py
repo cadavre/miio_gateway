@@ -63,6 +63,19 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
     def parse_incoming_data(self, params, event, model, sid):
         if params is None:
             return False
+        
+        rgba_raw = params.get("rgb")
+        if rgba_raw is not None:
+            rgbhexstr = "%x" % rgba_raw
+            if len(rgbhexstr) <= 8:
+                rgbhexstr = rgbhexstr.zfill(8)
+                rgbhex = bytes.fromhex(rgbhexstr)
+                rgba = struct.unpack('BBBB', rgbhex)
+                brightness = rgba[0]
+                rgb = rgba[1:]
+        
+                self._brightness = brightness
+                self._hs = color_util.color_RGB_to_hs(*rgb)
 
         light = params.get("light")
         if light is not None:
