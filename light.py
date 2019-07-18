@@ -51,7 +51,11 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
         argb = (self._brightness,) + rgb
         argbhex = binascii.hexlify(struct.pack("BBBB", *argb)).decode("ASCII")
         argbhex = int(argbhex, 16)
-        self._send_to_hub({ "method": "set_rgb", "params": [argbhex] })
+        
+        if argbhex <= 16777215:
+            self._send_to_hub({ "method": "toggle_light", "params": ["on"] })
+        else:
+            self._send_to_hub({ "method": "set_rgb", "params": [argbhex] })
         self._state = True
         self.schedule_update_ha_state()
 
@@ -64,8 +68,10 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
         if params is None:
             return False
         
+        light = params.get("light")
         rgba_raw = params.get("rgb")
-        if rgba_raw is not None:
+        
+        if None not in (rgba_raw, light):
             rgbhexstr = "%x" % rgba_raw
             if len(rgbhexstr) <= 8:
                 rgbhexstr = rgbhexstr.zfill(8)
@@ -74,15 +80,12 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
                 brightness = rgba[0]
                 rgb = rgba[1:]
         
-                self._brightness = brightness
-                self._hs = color_util.color_RGB_to_hs(*rgb)
-
-        light = params.get("light")
-        if light is not None:
-            if light == 'on':
-                self._state = True
-            elif light == 'off':
-                self._state = False
-            return True
+                if light == 'on' or rgba_raw > 0:
+                    self._state = True
+                    self._brightness = brightness
+                    self._hs = color_util.color_RGB_to_hs(*rgb)
+                else:
+                    self._state = False
+                return True
 
         return False
