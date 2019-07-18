@@ -24,13 +24,13 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     _LOGGER.info("Setting up sound player")
     devices = []
     gateway = hass.data[DOMAIN]
-    devices.append(XiaomiGatewayLight("gw_player", gateway))
+    devices.append(XiaomiGatewayLight(gateway))
     add_entities(devices)
 
 class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
 
-    def __init__(self, name, gw):
-        XiaomiGwDevice.__init__(self, name, gw)
+    def __init__(self, gw):
+        XiaomiGwDevice.__init__(self, gw, "media_player", None, "miio.gateway", "Gateway Player")
         self._volume = None
         self._muted = False
         self._ringtone = 1
@@ -116,9 +116,7 @@ class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
         self._state = STATE_IDLE
         self.async_schedule_update_ha_state()
 
-    def parse_incoming_data(self, params, event, model, sid):
-        if params is None:
-            return False
+    def parse_incoming_data(self, model, sid, event, params):
 
         gateway_volume = params.get("gateway_volume")
         if gateway_volume is not None:
