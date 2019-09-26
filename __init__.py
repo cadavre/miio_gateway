@@ -112,6 +112,8 @@ class XiaomiGw:
 
         self.known_sids = []
         self.known_sids.append("miio.gateway")
+        
+        self._socket_is_dead = False
 
         import hashlib, base64
         self._unique_id = base64.urlsafe_b64encode(hashlib.sha1((self._host + ":" + str(self._port)).encode("utf-8")).digest())[:10].decode("utf-8")
@@ -125,8 +127,9 @@ class XiaomiGw:
         _LOGGER.info("Creating socket...")
         self._socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self._socket.settimeout(0.1)
+        self._socket_is_dead = False
 
-    def close_socket(self, event):
+    def close_socket(self, event=None):
         """Close connection socket."""
         self._listening = False
         if self._socket is not None:
@@ -145,6 +148,12 @@ class XiaomiGw:
 
     def send_to_hub(self, data, callback=None):
         """Send data to hub."""
+        if self._socket_is_dead is True:
+            _LOGGER.error("Error: Socket has timed out, resetting...")
+            self.close_socket()
+            self.create_socket()
+            self.listen_socket()
+            
         miio_id, data = self._miio_msg_encode(data)
         if callback is not None:
             _LOGGER.info("Adding callback for call ID: " + str(miio_id))
@@ -159,13 +168,14 @@ class XiaomiGw:
             if self._socket is None:
                 continue
 
-            while not self._send_queue.empty():
-                data = self._send_queue.get();
-                _LOGGER.debug("Sending data:")
-                _LOGGER.debug(data)
-                self._socket.sendto(data, (self._host, self._port))
-
             try:
+                while not self._send_queue.empty():
+                    data = self._send_queue.get();
+                    _LOGGER.debug("Sending data:")
+                    _LOGGER.debug(data)
+                    self._socket.sendto(data, (self._host, self._port))
+
+           
                 data = self._socket.recvfrom(1480)[0]
                 _LOGGER.debug("Received data:")
                 _LOGGER.debug(data)
@@ -180,6 +190,10 @@ class XiaomiGw:
                 self._parse_received_resps(resps)
 
             except socket.timeout:
+                pass
+            except socket.error:
+                _LOGGER.error("Socket just died, will attempt recovery on next command.")
+                self._socket_is_dead = True
                 pass
 
 
@@ -311,17 +325,18 @@ class XiaomiGw:
     def _set_available(self):
         """Set state to AVAILABLE."""
         was_unavailable = not self._is_available
-        self._is_available = True
         self._ping_loss = 0
         if was_unavailable:
             _LOGGER.info("Gateway became available!")
+            self._is_available = True
             for func in self.callbacks:
                 func(None, None, EVENT_AVAILABILITY)
 
     @callback
     def _async_set_unavailable(self, now):
         """Set state to UNAVAILABLE."""
-        if self._ping_loss > 2:
+        was_available = self._is_available
+        if self._ping_loss > 2 and was_available:
             _LOGGER.info("Gateway became unavailable by timeout!")
             self._is_available = False
             for func in self.callbacks:
