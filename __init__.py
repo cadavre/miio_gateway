@@ -20,8 +20,8 @@ from homeassistant.util.dt import utcnow
 
 _LOGGER = logging.getLogger(__name__)
 
-TIME_INTERVAL_PING = timedelta(minutes=5)
-TIME_INTERVAL_UNAVAILABLE = timedelta(minutes=11)
+TIME_INTERVAL_PING = timedelta(minutes=1)
+TIME_INTERVAL_UNAVAILABLE = timedelta(minutes=3)
 
 DOMAIN = "miio_gateway"
 CONF_DATA_DOMAIN = "miio_gateway_config"
@@ -41,6 +41,7 @@ ATTR_MODEL = "model"
 EVENT_METADATA = "internal.metadata"
 EVENT_VALUES = "internal.values"
 EVENT_KEEPALIVE = "event.keepalive"
+EVENT_AVAILABILITY = "event.availability"
 
 SENSORS_CONFIG_SCHEMA = vol.Schema({
     vol.Optional(CONF_SENSOR_SID): cv.string,
@@ -315,7 +316,7 @@ class XiaomiGw:
         if was_unavailable:
             _LOGGER.info("Gateway became available!")
             for func in self.callbacks:
-                func({"availability": True})
+                func(None, None, EVENT_AVAILABILITY)
 
     @callback
     def _async_set_unavailable(self, now):
@@ -324,7 +325,7 @@ class XiaomiGw:
             _LOGGER.info("Gateway became unavailable by timeout!")
             self._is_available = False
             for func in self.callbacks:
-                func({"availability": False})
+                func(None, None, EVENT_AVAILABILITY)
 
     @callback
     def _async_send_ping(self, now):
@@ -387,35 +388,35 @@ class XiaomiGwDevice(Entity):
         self.hass.add_job(self._push_data, *args)
 
     @callback
-    def _push_data(self, model, sid, event, params):
+    def _push_data(self, model = None, sid = None, event = None, params = {}):
         """Push data that came from gateway to parser. Update HA state if any changes were made."""
 
-        # If shall update availability
-        has_availability = False
-        if params is not None and params.get("availability") is not None:
-            has_availability = True
-
-        # If should/need get to real parsing
-        init_check = self._check_data(model, sid, event, params)
-        if init_check is not None:
+        # If should/need get into real parsing
+        init_parse = self._pre_parse_data(model, sid, event, params)
+        if init_parse is not None:
             # Update HA state
-            if init_check == True:
+            if init_parse == True:
                 self.async_schedule_update_ha_state()
             return
 
         # If parsed some data
         has_data = self.parse_incoming_data(model, sid, event, params)
-
-        # Update HA state
-        if has_availability or has_data:
+        if has_data:
+            # Update HA state
             self.async_schedule_update_ha_state()
+            return
 
     def parse_incoming_data(self, model, sid, event, params):
         """Parse incoming data from gateway. Abstract."""
         raise NotImplementedError()
 
-    def _check_data(self, model, sid, event, params):
+    def _pre_parse_data(self, model, sid, event, params):
         """Make initial checks and return bool if parsing shall be ended."""
+
+        # Generic handler for availability change
+        # Devices are getting availability state from Gateway itself
+        if event == EVENT_AVAILABILITY:
+            return True
 
         if self._sid != sid:
             return False
