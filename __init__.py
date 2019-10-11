@@ -262,7 +262,7 @@ class XiaomiGw:
                     event = EVENT_VALUES
                 else:
                     """Unknown method."""
-                    print("Received unknown method: " + str(data))
+                    _LOGGER.error("Received unknown method: " + str(method))
                     continue
 
                 # Now we have all the data we need
@@ -271,7 +271,7 @@ class XiaomiGw:
 
             else:
                 """Nothing that we can handle."""
-                print("Non-parseable data: " + str(data))
+                _LOGGER.error("Non-parseable data: " + str(res))
 
     def _event_received(self, model, sid, event):
         """Callback for receiving sensor event from gateway."""
@@ -308,7 +308,7 @@ class XiaomiGw:
             data_arr = "[" + data.decode().replace("}{", "},{") + "]"
             resps = json.loads(data_arr)
         except:
-            print("Bad JSON received: " + str(data))
+            _LOGGER.error("Bad JSON received: " + str(data))
         return resps
 
 
