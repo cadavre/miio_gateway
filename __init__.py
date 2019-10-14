@@ -126,15 +126,6 @@ class XiaomiGw:
         self._socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self._socket.settimeout(0.1)
 
-    def close_socket(self, event):
-        """Close connection socket."""
-        self._listening = False
-        if self._socket is not None:
-            _LOGGER.info("Closing socket...")
-            self._socket.close()
-            self._socket = None
-        self._thread.join()
-
     def listen_socket(self):
         """Listen for messages from gateway."""
         self._listening = True
@@ -142,6 +133,15 @@ class XiaomiGw:
         self._thread.daemon = True
         self._thread.start()
         self._async_track_availability()
+
+    def close_socket(self, event=None):
+        """Close connection socket."""
+        self._listening = False
+        if self._socket is not None:
+            _LOGGER.info("Closing socket...")
+            self._socket.close()
+            self._socket = None
+        self._thread.join()
 
     def send_to_hub(self, data, callback=None):
         """Send data to hub."""
@@ -159,13 +159,13 @@ class XiaomiGw:
             if self._socket is None:
                 continue
 
-            while not self._send_queue.empty():
-                data = self._send_queue.get();
-                _LOGGER.debug("Sending data:")
-                _LOGGER.debug(data)
-                self._socket.sendto(data, (self._host, self._port))
-
             try:
+                while not self._send_queue.empty():
+                    data = self._send_queue.get();
+                    _LOGGER.debug("Sending data:")
+                    _LOGGER.debug(data)
+                    self._socket.sendto(data, (self._host, self._port))
+
                 data = self._socket.recvfrom(1480)[0]
                 _LOGGER.debug("Received data:")
                 _LOGGER.debug(data)
@@ -180,6 +180,9 @@ class XiaomiGw:
                 self._parse_received_resps(resps)
 
             except socket.timeout:
+                pass
+            except socket.error:
+                _LOGGER.error("Socket is dead. Will close and reopen.")
                 pass
 
 
@@ -248,7 +251,7 @@ class XiaomiGw:
                     event = EVENT_VALUES
                 else:
                     """Unknown method."""
-                    print("Received unknown method: " + str(data))
+                    _LOGGER.info("Received unknown method: " + str(method))
                     continue
 
                 # Now we have all the data we need
@@ -257,7 +260,7 @@ class XiaomiGw:
 
             else:
                 """Nothing that we can handle."""
-                print("Non-parseable data: " + str(data))
+                _LOGGER.error("Non-parseable data: " + str(res))
 
     def _event_received(self, model, sid, event):
         """Callback for receiving sensor event from gateway."""
@@ -294,7 +297,7 @@ class XiaomiGw:
             data_arr = "[" + data.decode().replace("}{", "},{") + "]"
             resps = json.loads(data_arr)
         except:
-            print("Bad JSON received: " + str(data))
+            _LOGGER.error("Bad JSON received: " + str(data))
         return resps
 
 
