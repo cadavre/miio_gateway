@@ -36,6 +36,9 @@ class XiaomiGatewayLight(XiaomiGwDevice, MediaPlayerDevice):
         self._ringtone = 1
         self._state = STATE_IDLE
         self._player_tracker = None
+        self._initialized = False
+
+    def _init(self):
         self._send_to_hub({ "method": "get_prop", "params": ["gateway_volume"] }, self._init_set_volume)
 
     def _init_set_volume(self, result):

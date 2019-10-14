@@ -137,6 +137,13 @@ You can use them just like with buttons. Event type is still `event_type: miio_g
 
 ## Changelog
 
+### v1.2
+
+* UDP socket gateway connection rebuilt.
+* Supports re-connections now.
+* Gateway after-unavailable state is now refreshed.
+* Fixed wrong logging params that caused gateway to freeze, thanks @quarcko !
+
 ### v1.1
 
 * Changed entity_id and name generation methods.
