@@ -64,7 +64,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if sid is None or device_class is None:
             continue
 
-        gateway.known_sids.append(sid)
+        gateway.append_known_sid(sid)
 
         if device_class in all_device_classes:
             _LOGGER.info("Registering " + str(device_class) + " sid " + str(sid) + " as binary_sensor")

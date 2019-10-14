@@ -21,7 +21,6 @@ from homeassistant.util.dt import utcnow
 _LOGGER = logging.getLogger(__name__)
 
 TIME_INTERVAL_PING = timedelta(minutes=1)
-TIME_INTERVAL_UNAVAILABLE = timedelta(minutes=3)
 
 DOMAIN = "miio_gateway"
 CONF_DATA_DOMAIN = "miio_gateway_config"
@@ -62,23 +61,26 @@ SERVICE_SCHEMA = vol.Schema({})
 
 def setup(hass, config):
     """Setup gateway from config."""
-    _LOGGER.info("Starting setup...")
+    _LOGGER.info("Starting gateway setup...")
 
+    # Gateway starts it's action on object init.
     gateway = XiaomiGw(hass, config[DOMAIN][CONF_HOST], config[DOMAIN][CONF_PORT])
+
+    # Gentle stop on HASS stop.
+    hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, gateway.gently_stop)
+
+    # Share the config to platform's components.
     hass.data[DOMAIN] = gateway
     hass.data[CONF_DATA_DOMAIN] = config[DOMAIN].get(CONF_SENSORS)
 
-    gateway.create_socket()
-    gateway.listen_socket()
-    hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, gateway.close_socket)
-
+    # Load components.
     for component in ["light", "media_player", "binary_sensor", "sensor", "alarm_control_panel"]:
         discovery.load_platform(hass, component, DOMAIN, {}, config)
 
+    # Zigbee join HASS service helper.
     def join_zigbee_service_handler(service):
         gateway = hass.data[DOMAIN]
         gateway.send_to_hub({ "method": "start_zigbee_join" })
-
     hass.services.register(
         DOMAIN, SERVICE_JOIN_ZIGBEE, join_zigbee_service_handler,
         schema=SERVICE_SCHEMA)
@@ -86,10 +88,9 @@ def setup(hass, config):
     return True
 
 class XiaomiGw:
-    """Gateway representation with socket to connect to it."""
+    """Gateway socket and communication layer."""
 
     def __init__(self, hass, host, port):
-        """Initialize the gateway."""
         self.hass = hass
 
         self._host = host
@@ -97,51 +98,36 @@ class XiaomiGw:
 
         self._socket = None
         self._thread = None
-        self._listening = False
 
         self._send_queue = Queue(maxsize=25)
         self._miio_id = 0
 
-        self.callbacks = []
+        self._callbacks = []
         self._result_callbacks = {}
 
-        self._is_available = True
-        self._unavailability_listener = None
-        self._ping_listener = None
-        self._ping_loss = 0
+        self._available = None
+        self._availability_pinger = None
+        self._pings_sent = 0
 
-        self.known_sids = []
-        self.known_sids.append("miio.gateway")
+        self._known_sids = []
+        self._known_sids.append("miio.gateway") # Append self.
 
         import hashlib, base64
         self._unique_id = base64.urlsafe_b64encode(hashlib.sha1((self._host + ":" + str(self._port)).encode("utf-8")).digest())[:10].decode("utf-8")
+
+        self._create_socket()
+        self._init_listener()
+
+    """Public."""
 
     def unique_id(self) -> str:
         """Return a unique ID."""
         return self._unique_id
 
-    def create_socket(self):
-        """Create connection socket."""
-        _LOGGER.info("Creating socket...")
-        self._socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        self._socket.settimeout(0.1)
-
-    def listen_socket(self):
-        """Listen for messages from gateway."""
-        self._listening = True
-        self._thread = Thread(target=self._run_socket_thread, args=())
-        self._thread.daemon = True
-        self._thread.start()
-        self._async_track_availability()
-
-    def close_socket(self, event=None):
-        """Close connection socket."""
-        self._listening = False
-        if self._socket is not None:
-            _LOGGER.info("Closing socket...")
-            self._socket.close()
-            self._socket = None
-        self._thread.join()
+    def gently_stop(self, event=None):
+        """Stops listener and closes socket."""
+        self._stop_listening()
+        self._close_socket()
 
     def send_to_hub(self, data, callback=None):
         """Send data to hub."""
@@ -151,55 +137,156 @@ class XiaomiGw:
             self._result_callbacks[miio_id] = callback
         self._send_queue.put(data)
 
+    def append_callback(self, callback):
+        self._callbacks.append(callback)
+
+    def append_known_sid(self, sid):
+        self._known_sids.append(sid)
+
+    """Private."""
+
+    def _create_socket(self):
+        """Create connection socket."""
+        _LOGGER.debug()("Creating socket...")
+        self._socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+
+    def _close_socket(self, event=None):
+        """Close connection socket."""
+        if self._socket is not None:
+            _LOGGER.debug()("Closing socket...")
+            self._socket.close()
+            self._socket = None
+
+    def _init_listener(self):
+        """Initialize socket connection with first ping. Set availability accordingly."""
+        try:
+            # Send ping (w/o queue).
+            miio_id, ping = self._miio_msg_encode({"method": "internal.PING"})
+            self._socket.settimeout(0.2)
+            self._socket.sendto(ping, (self._host, self._port))
+            # Wait for response.
+            self._socket.settimeout(5.0)
+            res = self._socket.recvfrom(1480)[0]
+            # If didn't timeouted - gateway is available.
+            self._set_availability(True)
+        except socket.timeout:
+            # If timeouted – gateway is unavailable.
+            self._set_availability(False)
+        except (TypeError, socket.error) as e:
+            # Error: gateway configuration may be wrong.
+            _LOGGER.error()("Socket error! Your gateway configuration may be wrong!")
+            _LOGGER.error()(e)
+            self._set_availability(False)
+
+        # We can start listener for future actions.
+        if self._available is not None:
+            # We have gateway initial state - now we can run loop thread that does it all.
+            self._start_listening()
+
+    def _start_listening(self):
+        """Create thread for loop."""
+        _LOGGER.debug("Starting thread...")
+        self._thread = Thread(target=self._run_socket_thread, args=())
+        #self._thread.daemon = True
+        self._thread.start()
+        _LOGGER.debug("Starting availability tracker...")
+        self._track_availability()
+
+    def _stop_listening(self):
+        """Remove loop thread."""
+        _LOGGER.debug("Exiting thread...")
+        self._thread.join()
 
     def _run_socket_thread(self):
-        _LOGGER.info("Starting listener thread...")
-        while self._listening:
+        """Thread loop task."""
+        _LOGGER.debug("Starting listener thread...")
+
+        while True:
 
             if self._socket is None:
+                _LOGGER.error("No socket in listener!")
+                self.create_socket()
                 continue
 
             try:
                 while not self._send_queue.empty():
-                    data = self._send_queue.get();
+                    self._socket.settimeout(0.2)
+                    data = self._send_queue.get()
                     _LOGGER.debug("Sending data:")
                     _LOGGER.debug(data)
                     self._socket.sendto(data, (self._host, self._port))
 
-                data = self._socket.recvfrom(1480)[0]
+                self._socket.settimeout(5)
+                data = self._socket.recvfrom(1480)[0] # Will timeout on no data.
+
                 _LOGGER.debug("Received data:")
                 _LOGGER.debug(data)
 
-                # Gateway available = true
-                self._set_available()
+                # We got here in code = we have communication with gateway.
+                self._set_availability(True)
 
-                # Get all messages from response data
+                # Get all messages from response data.
                 resps = self._miio_msg_decode(data)
 
-                # Parse all messages in response
+                # Parse all messages in response.
                 self._parse_received_resps(resps)
 
             except socket.timeout:
                 pass
-            except socket.error:
-                _LOGGER.error("Socket is dead. Will close and reopen.")
-                pass
+            except socket.error as e:
+                _LOGGER.error("Socket error!")
+                _LOGGER.error(e)
 
+    """Gateway availability."""
+
+    def _track_availability(self):
+        """Check pings status and schedule next availability check."""
+        _LOGGER.debug("Starting to track availability...")
+        # Schedule pings every TIME_INTERVAL_PING.
+        self._availability_pinger = async_track_time_interval(
+            self.hass, self._ping, TIME_INTERVAL_PING)
+
+    def _set_availability(self, available):
+        """Set availability of the gateway. Inform child devices."""
+        was_available = self._available
+        availability_changed = (not available and was_available) or (available and not was_available)
+        if not available:
+            self._available = False
+            _LOGGER.warning("Gateway is unavailable!")
+        else:
+            self._available = True
+            self._pings_sent = 0
+            _LOGGER.info("Gateway is available!")
+
+        if availability_changed:
+            for func in self._callbacks:
+                func(None, None, EVENT_AVAILABILITY)
+
+    @callback
+    def _ping(self):
+        """Queue ping to keep and check connection."""
+        self._pings_sent = self._pings_sent + 1
+        self.send_to_hub({"method": "internal.PING"})
+        time.sleep(6) # Give it `timeout` time to respond...
+        if self._pings_sent >= 3:
+            self._set_availability(False)
+
+    """Miio gateway protocol parsing."""
 
     def _parse_received_resps(self, resps):
         """Parse received data."""
         for res in resps:
 
             if "result" in res:
-                """Handling request result."""
+                """Handling request result response."""
 
                 miio_id = res.get("id")
                 if miio_id is not None and miio_id in self._result_callbacks:
 
                     result = res.get("result")
-                    # Convert '{"result":["ok"]}' to single value "ok"
+                    # Convert '{"result":["ok"]}' to single value "ok".
                     if isinstance(result, list):
-                        # Parse '[]' result
+                        # Parse '[]' result.
                         if len(result) == 0:
                             result = "unknown"
                         else:
@@ -207,7 +294,7 @@ class XiaomiGw:
                     self._result_callbacks[miio_id](result)
 
             elif "method" in res:
-                """Handling received data."""
+                """Handling new data received."""
 
                 if "model" not in res:
                     res["model"] = "lumi.gateway.mieu01"
@@ -230,7 +317,7 @@ class XiaomiGw:
                         # Extract list to dict
                         params = params[0]
                     if not isinstance(params, dict):
-                        params = {"data": params}
+                        params = { "data": params }
 
                 method = res.get("method")
                 if method.startswith("internal."):
@@ -255,7 +342,7 @@ class XiaomiGw:
                     continue
 
                 # Now we have all the data we need
-                for func in self.callbacks:
+                for func in self._callbacks:
                     func(model, sid, event, params)
 
             else:
@@ -265,9 +352,10 @@ class XiaomiGw:
     def _event_received(self, model, sid, event):
         """Callback for receiving sensor event from gateway."""
         _LOGGER.debug("Received event: " + str(model) + " " + str(sid) + " - " + str(event))
-        if sid not in self.known_sids:
-            _LOGGER.info("Received event from unregistered sensor: " + str(model) + " " + str(sid) + " - " + str(event))
+        if sid not in self._known_sids:
+            _LOGGER.warning("Received event from unregistered sensor: " + str(model) + " " + str(sid) + " - " + str(event))
 
+    """Miio."""
 
     def _miio_msg_encode(self, data):
         """Encode data to be sent to gateway."""
@@ -280,61 +368,25 @@ class XiaomiGw:
                 self._miio_id = self._miio_id + 2
             if self._miio_id > 999999999:
                 self._miio_id = 1
-            msg = { "id": self._miio_id };
-            msg.update(data);
+            msg = { "id": self._miio_id }
+            msg.update(data)
         return([self._miio_id, (json.dumps(msg)).encode()])
 
     def _miio_msg_decode(self, data):
         """Decode data received from gateway."""
 
-        # Trim `0` from the end of data string
+        # Trim `0` from the end of data string.
         if data[-1] == 0:
             data = data[:-1]
 
-        # Prepare array of responses
+        # Prepare array of responses.
         resps = []
         try:
             data_arr = "[" + data.decode().replace("}{", "},{") + "]"
             resps = json.loads(data_arr)
         except:
-            _LOGGER.error("Bad JSON received: " + str(data))
+            _LOGGER.warning("Bad JSON received: " + str(data))
         return resps
-
-
-    def _async_track_availability(self):
-        """Set tracker to ping and check availability."""
-        _LOGGER.debug("Starting to track availability...")
-        self._unavailability_listener = async_track_time_interval(
-            self.hass, self._async_set_unavailable,
-            TIME_INTERVAL_UNAVAILABLE)
-        self._ping_listener = async_track_time_interval(
-            self.hass, self._async_send_ping,
-            TIME_INTERVAL_PING)
-
-    def _set_available(self):
-        """Set state to AVAILABLE."""
-        was_unavailable = not self._is_available
-        self._is_available = True
-        self._ping_loss = 0
-        if was_unavailable:
-            _LOGGER.info("Gateway became available!")
-            for func in self.callbacks:
-                func(None, None, EVENT_AVAILABILITY)
-
-    @callback
-    def _async_set_unavailable(self, now):
-        """Set state to UNAVAILABLE."""
-        if self._ping_loss > 2:
-            _LOGGER.info("Gateway became unavailable by timeout!")
-            self._is_available = False
-            for func in self.callbacks:
-                func(None, None, EVENT_AVAILABILITY)
-
-    @callback
-    def _async_send_ping(self, now):
-        """Send ping to gateway."""
-        self._ping_loss = self._ping_loss + 1
-        self.send_to_hub({"method": "internal.PING"})
 
 
 class XiaomiGwDevice(Entity):
@@ -364,7 +416,7 @@ class XiaomiGwDevice(Entity):
 
     async def async_added_to_hass(self):
         """Add push data listener for this device."""
-        self._gw.callbacks.append(self._add_push_data_job)
+        self._gw.append_callback(self._add_push_data_job)
 
     @property
     def name(self):
