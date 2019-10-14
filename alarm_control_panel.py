@@ -28,8 +28,13 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
         # How to alarm
         self._ringtone = 1
         self._color = "ff0000"
-        self._send_to_hub({ "method": "get_prop", "params": ["arming"] }, self._init_set_arming)
-        self._send_to_hub({ "method": "get_prop", "params": ["alarming_volume"] }, self._init_set_volume)
+
+        self.update_device_params()
+
+    def update_device_params(self):
+        if self._gw.is_available():
+            self._send_to_hub({ "method": "get_prop", "params": ["arming"] }, self._init_set_arming)
+            self._send_to_hub({ "method": "get_prop", "params": ["alarming_volume"] }, self._init_set_volume)
 
     def _init_set_arming(self, result):
         if result is not None:
