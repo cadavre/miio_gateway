@@ -24,7 +24,12 @@ class XiaomiGatewayLight(XiaomiGwDevice, Light):
         self._hs = (0, 0)
         self._brightness = 100
         self._state = False
-        self._send_to_hub({ "method": "toggle_light", "params": ["off"] })
+
+        self.update_device_params()
+
+    def update_device_params(self):
+        if self._gw.is_available():
+            self._send_to_hub({ "method": "toggle_light", "params": ["off"] })
 
     @property
     def is_on(self):

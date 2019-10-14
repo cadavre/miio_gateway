@@ -1,6 +1,7 @@
+import json
 import logging
 import socket
-import json
+from time import sleep
 from threading import Thread
 from multiprocessing import Queue
 from datetime import timedelta
@@ -98,6 +99,7 @@ class XiaomiGw:
 
         self._socket = None
         self._thread = None
+        self._thread_alive = True
 
         self._send_queue = Queue(maxsize=25)
         self._miio_id = 0
@@ -124,6 +126,10 @@ class XiaomiGw:
         """Return a unique ID."""
         return self._unique_id
 
+    def is_available(self):
+        """Return availability state."""
+        return self._available
+
     def gently_stop(self, event=None):
         """Stops listener and closes socket."""
         self._stop_listening()
@@ -147,13 +153,13 @@ class XiaomiGw:
 
     def _create_socket(self):
         """Create connection socket."""
-        _LOGGER.debug()("Creating socket...")
+        _LOGGER.debug("Creating socket...")
         self._socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 
     def _close_socket(self, event=None):
         """Close connection socket."""
         if self._socket is not None:
-            _LOGGER.debug()("Closing socket...")
+            _LOGGER.debug("Closing socket...")
             self._socket.close()
             self._socket = None
 
@@ -162,7 +168,7 @@ class XiaomiGw:
         try:
             # Send ping (w/o queue).
             miio_id, ping = self._miio_msg_encode({"method": "internal.PING"})
-            self._socket.settimeout(0.2)
+            self._socket.settimeout(0.1)
             self._socket.sendto(ping, (self._host, self._port))
             # Wait for response.
             self._socket.settimeout(5.0)
@@ -174,8 +180,8 @@ class XiaomiGw:
             self._set_availability(False)
         except (TypeError, socket.error) as e:
             # Error: gateway configuration may be wrong.
-            _LOGGER.error()("Socket error! Your gateway configuration may be wrong!")
-            _LOGGER.error()(e)
+            _LOGGER.error("Socket error! Your gateway configuration may be wrong!")
+            _LOGGER.error(e)
             self._set_availability(False)
 
         # We can start listener for future actions.
@@ -195,13 +201,14 @@ class XiaomiGw:
     def _stop_listening(self):
         """Remove loop thread."""
         _LOGGER.debug("Exiting thread...")
+        self._thread_alive = False
         self._thread.join()
 
     def _run_socket_thread(self):
         """Thread loop task."""
         _LOGGER.debug("Starting listener thread...")
 
-        while True:
+        while self._thread_alive:
 
             if self._socket is None:
                 _LOGGER.error("No socket in listener!")
@@ -210,13 +217,13 @@ class XiaomiGw:
 
             try:
                 while not self._send_queue.empty():
-                    self._socket.settimeout(0.2)
+                    self._socket.settimeout(0.1)
                     data = self._send_queue.get()
                     _LOGGER.debug("Sending data:")
                     _LOGGER.debug(data)
                     self._socket.sendto(data, (self._host, self._port))
 
-                self._socket.settimeout(5)
+                self._socket.settimeout(1)
                 data = self._socket.recvfrom(1480)[0] # Will timeout on no data.
 
                 _LOGGER.debug("Received data:")
@@ -250,24 +257,23 @@ class XiaomiGw:
         """Set availability of the gateway. Inform child devices."""
         was_available = self._available
         availability_changed = (not available and was_available) or (available and not was_available)
-        if not available:
-            self._available = False
-            _LOGGER.warning("Gateway is unavailable!")
-        else:
+        if available:
             self._available = True
             self._pings_sent = 0
-            _LOGGER.info("Gateway is available!")
+        else:
+            self._available = False
 
         if availability_changed:
+            _LOGGER.info("Gateway availability changed! Available: " + str(available))
             for func in self._callbacks:
                 func(None, None, EVENT_AVAILABILITY)
 
     @callback
-    def _ping(self):
+    def _ping(self, event=None):
         """Queue ping to keep and check connection."""
         self._pings_sent = self._pings_sent + 1
         self.send_to_hub({"method": "internal.PING"})
-        time.sleep(6) # Give it `timeout` time to respond...
+        sleep(6) # Give it `timeout` time to respond...
         if self._pings_sent >= 3:
             self._set_availability(False)
 
@@ -395,6 +401,9 @@ class XiaomiGwDevice(Entity):
     def __init__(self, gw, platform, device_class = None, sid = None, name = None):
         """Initialize the device."""
 
+        self._gw = gw
+        self._send_to_hub = self._gw.send_to_hub
+
         self._state = None
         self._sid = sid
         self._name = name
@@ -411,9 +420,6 @@ class XiaomiGwDevice(Entity):
             self._unique_id = "{}_{}_{}".format(sid, platform, device_class)
             self.entity_id = platform + "." + sid.replace(".", "_") + "_" + device_class
 
-        self._gw = gw
-        self._send_to_hub = self._gw.send_to_hub
-
     async def async_added_to_hass(self):
         """Add push data listener for this device."""
         self._gw.append_callback(self._add_push_data_job)
@@ -428,7 +434,7 @@ class XiaomiGwDevice(Entity):
 
     @property
     def available(self):
-        return self._gw._is_available
+        return self._gw.is_available()
 
     @property
     def should_poll(self):
@@ -465,12 +471,17 @@ class XiaomiGwDevice(Entity):
         """Parse incoming data from gateway. Abstract."""
         raise NotImplementedError()
 
+    def update_device_params(self):
+        """If component needs to read data first to get it's state."""
+        pass
+
     def _pre_parse_data(self, model, sid, event, params):
         """Make initial checks and return bool if parsing shall be ended."""
 
         # Generic handler for availability change
         # Devices are getting availability state from Gateway itself
         if event == EVENT_AVAILABILITY:
+            self.update_device_params()
             return True
 
         if self._sid != sid:
