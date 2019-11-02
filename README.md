@@ -69,6 +69,7 @@ miio_gateway:
       friendly_name: My garage motion sensor  # display name (optional)
     - sid: lumi.0123
       class: door                             # door sensor
+      restore: true                           # will restore sensor state after HA reboot
     - sid: lumi.ab01
       class: button                           # button
 ```
@@ -135,7 +136,18 @@ Just like `button` – vibration sensor sends one of two events:
 
 You can use them just like with buttons. Event type is still `event_type: miio_gateway.action`.
 
+## Alarm finetuning
+
+Since implementation of HASS'es `alarm_control_panel` into `miio_gateway` component
+requires a lot of copy-paste – I abandoned this idea.
+
+Instead you can use [coupled_alarms](https://github.com/cadavre/coupled_alarms).
+
 ## Changelog
+
+### v1.3
+
+* Added `restore` param to sensor mapping. Defaults to `false`, will restore pre-HA restart state if set to `true`.
 
 ### v1.2
 
@@ -155,7 +167,7 @@ You can use them just like with buttons. Event type is still `event_type: miio_g
 * Sensor `class` can be now anything from sensor (humidity, illuminance, temperature, pressure and more).
   Keep in mind that not all Miio events are supported yet! Listed above are supported.
 
-#### Breaking changesButtons
+#### Breaking changes (v1.1)
 
 ##### General
 
