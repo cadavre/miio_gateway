@@ -26,7 +26,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     entities = []
 
     # Gateways's illuminace sensor
-    entities.append(XiaomiGwSensor(gateway, DEVICE_CLASS_ILLUMINANCE, "miio.gateway", "Gateway Illuminance Sensor"))
+    entities.append(XiaomiGwSensor(gateway, DEVICE_CLASS_ILLUMINANCE, "miio.gateway", "Gateway Illuminance Sensor", False))
 
     for cfg in hass.data[CONF_DATA_DOMAIN]:
         if not cfg:
