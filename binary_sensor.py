@@ -7,7 +7,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.helpers.event import async_track_point_in_utc_time
 import homeassistant.util.dt as dt_util
 
-from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF_SENSOR_NAME, EVENT_VALUES, XiaomiGwDevice
+from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF_SENSOR_NAME, CONF_SENSOR_RESTORE, EVENT_VALUES, XiaomiGwDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,6 +60,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         sid = cfg.get(CONF_SENSOR_SID)
         device_class = cfg.get(CONF_SENSOR_CLASS)
         name = cfg.get(CONF_SENSOR_NAME)
+        restore = cfg.get(CONF_SENSOR_RESTORE)
 
         if sid is None or device_class is None:
             continue
@@ -68,7 +69,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
         if device_class in all_device_classes:
             _LOGGER.info("Registering " + str(device_class) + " sid " + str(sid) + " as binary_sensor")
-            entities.append(XiaomiGwBinarySensor(gateway, device_class, sid, name))
+            entities.append(XiaomiGwBinarySensor(gateway, device_class, sid, name, restore))
 
     if not entities:
         _LOGGER.info("No binary_sensors configured")
@@ -79,8 +80,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
 class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
 
-    def __init__(self, gw, device_class, sid, name):
-        XiaomiGwDevice.__init__(self, gw, "binary_sensor", device_class, sid, name)
+    def __init__(self, gw, device_class, sid, name, restore):
+        XiaomiGwDevice.__init__(self, gw, "binary_sensor", device_class, sid, name, restore)
 
         # Custom Button device class
         if device_class == DEVICE_CLASS_BUTTON:

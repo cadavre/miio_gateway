@@ -15,7 +15,7 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util.dt import utcnow
 
@@ -32,6 +32,7 @@ CONF_SENSORS = "sensors"
 CONF_SENSOR_SID = "sid"
 CONF_SENSOR_CLASS = "class"
 CONF_SENSOR_NAME = "friendly_name"
+CONF_SENSOR_RESTORE = "restore"
 
 ATTR_ALIVE = "heartbeat"
 ATTR_VOLTAGE = "voltage"
@@ -47,6 +48,7 @@ SENSORS_CONFIG_SCHEMA = vol.Schema({
     vol.Optional(CONF_SENSOR_SID): cv.string,
     vol.Optional(CONF_SENSOR_CLASS): cv.string,
     vol.Optional(CONF_SENSOR_NAME): cv.string,
+    vol.Optional(CONF_SENSOR_RESTORE, default=False): cv.boolean,
 })
 
 CONFIG_SCHEMA = vol.Schema({
@@ -395,16 +397,17 @@ class XiaomiGw:
         return resps
 
 
-class XiaomiGwDevice(Entity):
+class XiaomiGwDevice(RestoreEntity):
     """A generic device of Gateway."""
 
-    def __init__(self, gw, platform, device_class = None, sid = None, name = None):
+    def __init__(self, gw, platform, device_class = None, sid = None, name = None, restore = None):
         """Initialize the device."""
 
         self._gw = gw
         self._send_to_hub = self._gw.send_to_hub
 
         self._state = None
+        self._restore = restore
         self._sid = sid
         self._name = name
 
@@ -423,6 +426,10 @@ class XiaomiGwDevice(Entity):
     async def async_added_to_hass(self):
         """Add push data listener for this device."""
         self._gw.append_callback(self._add_push_data_job)
+        if self._restore:
+            state = await self.async_get_last_state()
+            if state is not None:
+                self._state = state.state
 
     @property
     def name(self):

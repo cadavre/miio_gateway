@@ -5,7 +5,7 @@ from homeassistant.const import (
 from homeassistant.components.sensor import (
     DEVICE_CLASSES)
 
-from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF_SENSOR_NAME, XiaomiGwDevice
+from . import DOMAIN, CONF_DATA_DOMAIN, CONF_SENSOR_SID, CONF_SENSOR_CLASS, CONF_SENSOR_NAME, CONF_SENSOR_RESTORE, XiaomiGwDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     entities = []
 
     # Gateways's illuminace sensor
-    entities.append(XiaomiGwSensor(gateway, DEVICE_CLASS_ILLUMINANCE, "miio.gateway", "Gateway Illuminance Sensor"))
+    entities.append(XiaomiGwSensor(gateway, DEVICE_CLASS_ILLUMINANCE, "miio.gateway", "Gateway Illuminance Sensor", False))
 
     for cfg in hass.data[CONF_DATA_DOMAIN]:
         if not cfg:
@@ -35,6 +35,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         sid = cfg.get(CONF_SENSOR_SID)
         device_class = cfg.get(CONF_SENSOR_CLASS)
         name = cfg.get(CONF_SENSOR_NAME)
+        restore = cfg.get(CONF_SENSOR_RESTORE)
 
         if sid is None or device_class is None:
             continue
@@ -43,7 +44,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
         if device_class in all_device_classes:
             _LOGGER.info("Registering " + str(device_class) + " sid " + str(sid) + " as sensor")
-            entities.append(XiaomiGwSensor(gateway, device_class, sid, name))
+            entities.append(XiaomiGwSensor(gateway, device_class, sid, name, restore))
 
     if not entities:
         _LOGGER.info("No sensors configured")
@@ -54,8 +55,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
 class XiaomiGwSensor(XiaomiGwDevice):
 
-    def __init__(self, gw, device_class, sid, name):
-        XiaomiGwDevice.__init__(self, gw, "sensor", device_class, sid, name)
+    def __init__(self, gw, device_class, sid, name, restore):
+        XiaomiGwDevice.__init__(self, gw, "sensor", device_class, sid, name, restore)
 
         self._device_class = device_class
 
