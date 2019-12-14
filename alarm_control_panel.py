@@ -114,9 +114,9 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
         return False
 
     def _get_state_by_volume(self, volume):
-        if volume < 90:
+        if volume < 85:
             return STATE_ALARM_ARMED_HOME
-        elif volume < 100:
+        elif volume < 95:
             return STATE_ALARM_ARMED_NIGHT
         else:
             return STATE_ALARM_ARMED_AWAY
