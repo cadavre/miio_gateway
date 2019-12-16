@@ -8,6 +8,12 @@ from homeassistant.const import (
     STATE_ALARM_ARMED_AWAY, STATE_ALARM_ARMED_HOME, STATE_ALARM_ARMED_NIGHT,
     STATE_ALARM_DISARMED, STATE_ALARM_TRIGGERED)
 
+from homeassistant.components.alarm_control_panel.const import (
+    SUPPORT_ALARM_ARM_AWAY,
+    SUPPORT_ALARM_ARM_HOME,
+    SUPPORT_ALARM_TRIGGER,
+    SUPPORT_ALARM_ARM_NIGHT)
+
 _LOGGER = logging.getLogger(__name__)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
@@ -120,6 +126,11 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
     @property
     def state(self):
         return self._state
+
+    @property
+    def supported_features(self) -> int:
+        """Return the list of supported features."""
+        return SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY | SUPPORT_ALARM_TRIGGER | SUPPORT_ALARM_ARM_NIGHT
 
     def parse_incoming_data(self, model, sid, event, params):
 
