@@ -42,6 +42,7 @@ control the gateway from Mi Home app!
   > * motion sensors,
   > * door/window sensors,
   > * leak sensors,
+  > * smoke sensors,
   > * buttons.
 
 * Child sensors as `sensor`.
@@ -72,6 +73,8 @@ miio_gateway:
       restore: true                           # will restore sensor state after HA reboot
     - sid: lumi.ab01
       class: button                           # button
+    - sid: lumi.smk1
+      class: smoke                            # smoke sensor
 ```
 
 ## Zibgee devices
@@ -145,6 +148,10 @@ Instead you can use [coupled_alarms](https://github.com/cadavre/coupled_alarms).
 
 ## Changelog
 
+### v1.3.1
+
+* Updated `alarm_control_panel` with `supported_features` to work with HA 0.103 and above.
+
 ### v1.3
 
 * Added `restore` param to sensor mapping. Defaults to `false`, will restore pre-HA restart state if set to `true`.
@@ -186,9 +193,8 @@ Instead you can use [coupled_alarms](https://github.com/cadavre/coupled_alarms).
 
 ## Not supported yet
 
-Not supported but likely to work with:
+Not supported but **likely to work** with:
 
-* Smoke and gas sensors.
 * Occupancy detectors.
 * Plug switches.
 * Locks.
