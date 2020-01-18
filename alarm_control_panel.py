@@ -8,6 +8,10 @@ from homeassistant.const import (
     STATE_ALARM_ARMED_AWAY, STATE_ALARM_ARMED_HOME, STATE_ALARM_ARMED_NIGHT,
     STATE_ALARM_DISARMED, STATE_ALARM_TRIGGERED)
 
+from homeassistant.components.alarm_control_panel.const import (
+    SUPPORT_ALARM_ARM_AWAY, SUPPORT_ALARM_ARM_HOME,
+    SUPPORT_ALARM_ARM_NIGHT, SUPPORT_ALARM_TRIGGER)
+
 _LOGGER = logging.getLogger(__name__)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
@@ -24,7 +28,7 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
 
         # Default to ARMED_AWAY if no volume data was set
         self._state_by_volume = STATE_ALARM_ARMED_AWAY
-        self._volume = 70
+        self._volume = 80
         # How to alarm
         self._ringtone = 1
         self._color = "ff0000"
@@ -60,21 +64,21 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
 
     def alarm_arm_away(self, code=None):
         """Send arm away command."""
-        self._volume = 70
+        self._volume = 80
         self._arm()
         self._state = STATE_ALARM_ARMED_AWAY
         self.schedule_update_ha_state()
 
     def alarm_arm_home(self, code=None):
         """Send arm home command."""
-        self._volume = 15
+        self._volume = 25
         self._arm()
         self._state = STATE_ALARM_ARMED_HOME
         self.schedule_update_ha_state()
 
     def alarm_arm_night(self, code=None):
         """Send arm night command."""
-        self._volume = 5
+        self._volume = 15
         self._arm()
         self._state = STATE_ALARM_ARMED_NIGHT
         self.schedule_update_ha_state()
@@ -110,7 +114,7 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
         return False
 
     def _get_state_by_volume(self, volume):
-        if volume < 10:
+        if volume < 20:
             return STATE_ALARM_ARMED_NIGHT
         elif volume < 30:
             return STATE_ALARM_ARMED_HOME
@@ -120,6 +124,10 @@ class XiaomiGatewayAlarm(XiaomiGwDevice, alarm.AlarmControlPanel):
     @property
     def state(self):
         return self._state
+
+    @property
+    def supported_features(self) -> int:
+        return SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY | SUPPORT_ALARM_ARM_NIGHT | SUPPORT_ALARM_TRIGGER
 
     def parse_incoming_data(self, model, sid, event, params):
 
