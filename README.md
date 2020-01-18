@@ -101,9 +101,9 @@ Use SID to define it in `sensors:` section of `configuration.yaml`.
 
 Zigbee buttons are triggering an events for their actions.
 
-Event type: `miio_gateway.button_action`
+Event type: `miio_gateway.action`
 
-Available event data: `click_type`
+Available event data: `event_type`
 
 Click type available payloads:
 * `click`
@@ -119,7 +119,7 @@ Click type available payloads:
     platform: event
     event_type: miio_gateway.action
     event_data:
-      event_type: 'single_click'
+      event_type: 'click'
       entity_id: 'binary_sensor.lumi_ab01_button'
   action:
     - service: light.toggle
