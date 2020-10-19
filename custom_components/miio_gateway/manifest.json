@@ -1,0 +1,10 @@
+{
+  "domain": "miio_gateway",
+  "name": "miio gateway",
+  "documentation": "https://github.com/cadavre/miio_gateway",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": [
+    "@cadavre"
+  ]
+}
