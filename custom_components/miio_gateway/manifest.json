@@ -1,6 +1,7 @@
 {
   "domain": "miio_gateway",
   "name": "miio gateway",
+  "version": "1.0",
   "documentation": "https://github.com/cadavre/miio_gateway",
   "requirements": [],
   "dependencies": [],
