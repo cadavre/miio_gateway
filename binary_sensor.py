@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDevice, DEVICE_CLASSES)
+    BinarySensorEntity, DEVICE_CLASSES)
 
 from homeassistant.helpers.event import async_track_point_in_utc_time
 import homeassistant.util.dt as dt_util
@@ -78,7 +78,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(entities)
     return True
 
-class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorDevice):
+class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorEntity):
 
     def __init__(self, gw, device_class, sid, name, restore):
         XiaomiGwDevice.__init__(self, gw, "binary_sensor", device_class, sid, name, restore)
