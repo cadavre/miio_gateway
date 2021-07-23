@@ -1,3 +1,5 @@
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+
 # Miio Gateway
 
 This is Miio Gateway EU version implementation based on encyryption-less `miio_client` 
@@ -147,6 +149,12 @@ requires a lot of copy-paste – I abandoned this idea.
 Instead you can use [coupled_alarms](https://github.com/cadavre/coupled_alarms).
 
 ## Changelog
+
+### v1.5.0
+* HACS custom repository
+
+### v1.4.0
+* Added `manifest.json` in order to be compatible with HA 2021.06 and updating some entities based on the HA entities deprecation.  
 
 ### v1.3.1
 
