@@ -5,7 +5,7 @@
   "issue_tracker": "https://github.com/cadavre/miio_gateway/issues",
   "dependencies": [],
   "config_flow": false,
-  "version": "1.4",
+  "version": "1.5.0",
   "codeowners": [
     "@cadavre",
     "@glebsterx",
