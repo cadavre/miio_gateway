@@ -7,7 +7,11 @@
   "config_flow": false,
   "version": "1.4",
   "codeowners": [
-    "@cadavre"
+    "@cadavre",
+    "@glebsterx",
+    "@cliffordwhansen",
+    "@scottie34",
+    "@aburghelea"
   ],
   "requirements": [],
   "iot_class": "local_polling"
