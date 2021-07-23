@@ -1,6 +1,6 @@
 {
   "domain": "miio_gateway",
-  "name": "miio Gateway",
+  "name": "Miio Gateway for the unfortunate lumi.gateway.mieu01",
   "documentation": "https://github.com/cadavre/miio_gateway",
   "issue_tracker": "https://github.com/cadavre/miio_gateway/issues",
   "dependencies": [],
