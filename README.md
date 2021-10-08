@@ -149,19 +149,18 @@ requires a lot of copy-paste – I abandoned this idea.
 Instead you can use [coupled_alarms](https://github.com/cadavre/coupled_alarms).
 
 ## Changelog
+### v.1.6.0
+* Fix restore behaviour of binary_sensor
 
 ### v1.5.0
 * HACS custom repository
 
 ### v1.4.0
 * Added `manifest.json` in order to be compatible with HA 2021.06 and updating some entities based on the HA entities deprecation.  
-
 ### v1.3.1
-
 * Updated `alarm_control_panel` with `supported_features` to work with HA 0.103 and above.
 
 ### v1.3
-
 * Added `restore` param to sensor mapping. Defaults to `false`, will restore pre-HA restart state if set to `true`.
 
 ### v1.2
