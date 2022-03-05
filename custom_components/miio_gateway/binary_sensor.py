@@ -105,8 +105,8 @@ class XiaomiGwBinarySensor(XiaomiGwDevice, BinarySensorEntity):
         return self._device_class
 
     @property
-    def device_state_attributes(self):
-        attrs = super().device_state_attributes
+    def extra_state_attributes(self):
+        attrs = super().extra_state_attributes
         if self._last_action is not None:
             attrs.update({ATTR_LAST_ACTION: self._last_action})
         return attrs
